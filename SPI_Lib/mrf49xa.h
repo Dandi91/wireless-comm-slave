@@ -348,7 +348,7 @@ SPI_RFT_Retval SPI_RFT_Disable_Receiver(void);
 SPI_RFT_Retval SPI_RFT_Enter_Sleep_Mode(void);
 
 SPI_RFT_Retval SPI_RFT_Start_Polling(void);
-SPI_RFT_Retval SPI_RFT_Write_Packet(uint8_t address, uint8_t packet_type, uint8_t* data, uint8_t data_len);
+SPI_RFT_Retval SPI_RFT_Write_Packet(uint8_t address, uint8_t back_address, uint8_t packet_type, uint8_t* data, uint8_t data_len);
 
 SPI_RFT_Retval SPI_RFT_Set_Flags(SPI_RFT_Register reg_index, uint16_t flags);
 SPI_RFT_Retval SPI_RFT_Reset_Flags(SPI_RFT_Register reg_index, uint16_t flags);

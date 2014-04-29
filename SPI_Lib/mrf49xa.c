@@ -21,8 +21,8 @@ static uint16_t register_state[11] = {
 
 uint8_t sync_byte = 0xD4;
 
-uint8_t crypto_buffer_in[MAX_PACKET_LOAD + 2];
-uint8_t crypto_buffer_out[MAX_PACKET_LOAD + 7];
+uint8_t crypto_buffer_in[MAX_PACKET_LOAD + 3];
+uint8_t crypto_buffer_out[MAX_PACKET_LOAD + 8];
 
 typedef enum
 {
@@ -352,7 +352,7 @@ void SPI_RFT_SPI_Callback(uint16_t result)
 			case SPI_RFT_Proc_Header:
 			{
         rx_len = result & 0xFF;
-        if (rx_len > MAX_PACKET_LOAD + 3)
+        if (rx_len > MAX_PACKET_LOAD + 4)
         {
           SPI_RFT_Rearm_Receiver();
           break;
@@ -448,7 +448,7 @@ void SPI_RFT_IRO_IRQHandler(void)
 }
 
 // Function to send data. It automatically turns on TX module before transmission.
-SPI_RFT_Retval SPI_RFT_Write_Packet(uint8_t address, uint8_t packet_type, uint8_t* data, uint8_t data_len)
+SPI_RFT_Retval SPI_RFT_Write_Packet(uint8_t address, uint8_t back_address, uint8_t packet_type, uint8_t* data, uint8_t data_len)
 {
 	SPI_RFT_Retval a;
   uint8_t i;
@@ -462,11 +462,12 @@ SPI_RFT_Retval SPI_RFT_Write_Packet(uint8_t address, uint8_t packet_type, uint8_
   crypto_buffer_out[4] = data_len + 3;
 
   crypto_buffer_in[0] = address;
-  crypto_buffer_in[1] = packet_type;
+  crypto_buffer_in[1] = back_address;
+  crypto_buffer_in[2] = packet_type;
 
   for (i = 0; i < data_len; i++)
-    crypto_buffer_in[i + 2] = data[i];
-  Crypt_Bytes(crypto_buffer_in,crypto_buffer_out + 5,data_len + 2);
+    crypto_buffer_in[i + 3] = data[i];
+  Crypt_Bytes(crypto_buffer_in,crypto_buffer_out + 5,data_len + 3);
 
 	a = SPI_RFT_Enable_Transmitter();
   if (a != SPI_RFT_OK)

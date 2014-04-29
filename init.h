@@ -10,11 +10,11 @@
 #include "dac.h"
 #include "adc.h"
 
-#define RTC_ADDR_FLAGS	RTC_BASE + 0x50 + 0
-#define RTC_ADDR_SLADR  RTC_BASE + 0x50 + 1
-#define RTC_ADDR_AESKEY RTC_BASE + 0x50 + 2
+#define RTC_ADDR_FLAGS	(RTC_BASE + 0x50 + 0)
+#define RTC_ADDR_SLADR  (RTC_BASE + 0x50 + 1)
+#define RTC_ADDR_AESKEY (RTC_BASE + 0x50 + 2)
 
-typedef union 
+typedef union
 {
   uint8_t d8;
   struct
@@ -24,6 +24,7 @@ typedef union
     uint32_t input_enabled:   1;
     uint32_t output_enabled:  1;
 		uint32_t is_power_save:   1;
+    uint32_t is_transmitter:  1;
   } b;
 } peripheralParams_TypeDef;
 

@@ -4,18 +4,18 @@
 // Number of samples
 #define TIME_PERIODS_COUNT 3
 // Multiplication constant (2048 / 2047.95)
-#define TIMER_SHIFTING_VALUE 1.000024414658561
+#define TIMER_SHIFTING_VALUE (float)1.000024414658561
 // Additional number of cycles for startup
 #define WARM_UP_TIME 10
 
 #define DEFAULT_MASTER_ADDRESS 0x01
 
 #define PACKET_TYPE_INIT  0x00
-#define PACKET_TYPE_REQ   0x01
-#define PACKET_TYPE_ANS   0x02
-#define PACKET_TYPE_OUT   0x03
+#define PACKET_TYPE_ANS   0x01
+#define PACKET_TYPE_OUT   0x02
+#define PACKET_TYPE_OK    0xFF
 
-uint8_t packet[MAX_PACKET_LOAD + 2];
+uint8_t packet[MAX_PACKET_LOAD + 3];
 uint8_t packet_length, address;
 
 uint8_t period_number, is_sampling = 0;
@@ -52,12 +52,14 @@ void TX_Complete(void)
 
 void RX_Complete(void)
 {
-  uint8_t i;
+  uint8_t i, sender;
   uint16_t* temp;
-	uint32_t sum;
+  uint32_t dsum;
+	float sum;
 
   if ((packet[0] == address) || (packet[0] == 0xFF))
   {
+    sender = packet[1];
 		if (is_sampling)
 		{
 			TIM_Cmd(TIM6,DISABLE);
@@ -68,18 +70,23 @@ void RX_Complete(void)
 				/* Sampling complete! */
 				is_sampling = 0;
 
-				sum = 0;
-				for (i = 0; i < TIME_PERIODS_COUNT; i++)
-					sum += time_periods[i];
-				sum = sum / TIME_PERIODS_COUNT;
+				dsum = time_periods[0];
+				for (i = 1; i < TIME_PERIODS_COUNT; i++)
+          if (dsum > time_periods[i])
+            dsum = time_periods[i];
+				sum = (float)dsum / (float)TIME_PERIODS_COUNT;
 
 				sum *= TIMER_SHIFTING_VALUE;
+        dsum = sum - WARM_UP_TIME;
+
+        if (dsum > 0xFFFF)
+          dsum = 0xFFFF;
 
 				// Configure WUT
 				RTC_ITConfig(RTC_IT_WUT,ENABLE);
 				RTC_WakeUpCmd(DISABLE);
 				RTC_WakeUpClockConfig(RTC_WakeUpClock_RTCCLK_Div16);
-				RTC_SetWakeUpCounter(sum - WARM_UP_TIME);
+				RTC_SetWakeUpCounter(dsum);
 			}
 			else
 			{
@@ -87,7 +94,7 @@ void RX_Complete(void)
 				TIM_Cmd(TIM6,ENABLE);
 			}
 		}
-    switch (packet[1])
+    switch (packet[2])
     {
       case PACKET_TYPE_INIT:  // device initialization
       {
@@ -99,11 +106,23 @@ void RX_Complete(void)
 					period_number = 0;
 					is_sampling = 1;
 					TIM_Cmd(TIM6,ENABLE);
+          SPI_RFT_Write_Packet(sender,address,PACKET_TYPE_OK,NULL,0);
 				}
 				break;
 			}
-      case PACKET_TYPE_REQ:  // data request
+      case PACKET_TYPE_OUT:  // output data
       {
+        /* setting outputs */
+        temp = (uint16_t*)&packet[3];
+        if (GetPeripheralParams().b.dac_enabled)
+        {
+          WriteDACs(++temp);
+          temp += 8;
+        }
+        if (GetPeripheralParams().b.output_enabled)
+          SetLogicOutputs(*(uint32_t*)temp);
+
+        /* getting inputs */
         temp = (uint16_t*)packet;
         packet_length = 0;
         if (GetPeripheralParams().b.adc_enabled)
@@ -117,19 +136,7 @@ void RX_Complete(void)
           *(uint32_t*)temp = GetLogicInputs();
           packet_length += 4;
         }
-        SPI_RFT_Write_Packet(DEFAULT_MASTER_ADDRESS,PACKET_TYPE_ANS,packet,packet_length);
-        break;
-      }
-      case PACKET_TYPE_OUT:  // output data
-      {
-        temp = (uint16_t*)packet;
-        if (GetPeripheralParams().b.dac_enabled)
-        {
-          WriteDACs(++temp);
-          temp += 8;
-        }
-        if (GetPeripheralParams().b.output_enabled)
-          SetLogicOutputs(*(uint32_t*)temp);
+        SPI_RFT_Write_Packet(sender,address,PACKET_TYPE_ANS,packet,packet_length);
         break;
       }
     }
