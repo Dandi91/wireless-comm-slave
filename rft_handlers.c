@@ -13,19 +13,37 @@
 
 #define PACKET_TYPE_INIT  0x00
 #define PACKET_TYPE_ANS   0x01
-#define PACKET_TYPE_OUT   0x02
+#define PACKET_TYPE_REQ   0x02
+#define PACKET_TYPE_TRSMT	0x03
+#define PACKET_TYPE_ECHO	0xFD
 #define PACKET_TYPE_OK    0xFF
+
+#define DATA_LENGTH			(sizeof(data_len_t))
 
 // Fields
 #define PCKT_TO_OFST		0x00
 #define PCKT_FROM_OFST	0x01
 #define PCKT_CMD_OFST		0x02
+#define PCKT_DATA_OFST	0x03
 
+#define TRMS_TO_OFST		0x00
+#define TRMS_CMD_OFST		0x01
+#define TRMS_DATA_OFST	0x02
+
+// Work packet
 uint8_t packet[MAX_PACKET_LOAD + PROTO_BYTES_CNT];
-uint8_t packet_length, address;
+// In-going transmission
+uint8_t in_trans[MAX_PACKET_LOAD + PROTO_BYTES_CNT];
+// Out-going transmission
+uint8_t out_trans[MAX_PACKET_LOAD + PROTO_BYTES_CNT];
+data_len_t packet_length;
+uint8_t address;
 
 uint8_t period_number, is_sampling = 0;
+uint8_t current_transmission_from, is_transmit = 0;
+uint8_t transmt_count, transmt_index;
 uint16_t time_periods[TIME_PERIODS_COUNT];
+uint8_t *curr_transmt_pos, *curr_pack_pos;
 
 void Set_Address(uint8_t value)
 {
@@ -63,11 +81,121 @@ void MakePacket(uint8_t to, uint8_t from, uint8_t cmd)
 	packet[PCKT_CMD_OFST] = cmd;
 }
 
+void StartTimer6(void)
+{
+  uint8_t i;
+
+  for (i = 0; i < TIME_PERIODS_COUNT; i++)
+    time_periods[i] = 0;
+  period_number = 0;
+  is_sampling = 1;
+  TIM_Cmd(TIM6,ENABLE);
+}
+
+void GetOutputs(uint16_t *p, data_len_t *len)
+{
+  uint8_t i;
+
+  len = 0;
+  if (GetPeripheralParams().b.adc_enabled)
+  {
+    for (i = 0; i < 8; i++)
+      *p++ = ReadADC(i);
+    len += 16;
+  }
+  if (GetPeripheralParams().b.input_enabled)
+  {
+    *(uint32_t*)p = GetLogicInputs();
+    len += 4;
+  }
+}
+
+void SetOutputs(uint16_t *p)
+{
+  if (GetPeripheralParams().b.dac_enabled)
+  {
+    WriteDACs(p);
+    p += 16;
+  }
+  if (GetPeripheralParams().b.output_enabled)
+    SetLogicOutputs(*(uint32_t*)p);
+}
+
+void HandlePacket(uint8_t *h_packet)
+{
+  data_len_t *temp;
+
+  switch (h_packet[TRMS_CMD_OFST])
+  {
+    case PACKET_TYPE_INIT:
+    {
+      if (GetPeripheralParams().b.is_power_save)
+      {
+        // Start to count time between packets
+        StartTimer6();
+        *(data_len_t*)curr_pack_pos = 0;
+        curr_pack_pos += DATA_LENGTH;
+        *(curr_pack_pos + TRMS_TO_OFST) = address;
+        *(curr_pack_pos + TRMS_CMD_OFST) = PACKET_TYPE_OK;
+        curr_pack_pos += TRMS_DATA_OFST;
+      }
+      break;
+    }
+    case PACKET_TYPE_REQ:
+    {
+      /* setting outputs */
+      SetOutputs((uint16_t*)(h_packet + TRMS_DATA_OFST));
+
+      /* getting outputs */
+      temp = (data_len_t*)curr_pack_pos;
+      curr_pack_pos += DATA_LENGTH;
+      *(curr_pack_pos + TRMS_TO_OFST) = address;
+      *(curr_pack_pos + TRMS_CMD_OFST) = PACKET_TYPE_ANS;
+      curr_pack_pos += TRMS_DATA_OFST;
+      GetOutputs((uint16_t*)curr_pack_pos,temp);
+
+      curr_pack_pos += *temp;
+      break;
+    }
+  }
+}
+
+
+void TransmitNextFromBuffer(void)
+{
+	uint32_t curr_length, i;
+
+	// Check with ourselves
+	if (*(curr_transmt_pos + DATA_LENGTH + TRMS_TO_OFST) == address)
+  {
+    // Recipient is we!
+    curr_transmt_pos += DATA_LENGTH;
+    HandlePacket(curr_transmt_pos);
+    return;
+  }
+
+	// Length
+	curr_length = *(data_len_t*)curr_transmt_pos;
+	curr_transmt_pos += DATA_LENGTH;
+
+	// Protocol fields
+	MakePacket(*(curr_transmt_pos + TRMS_TO_OFST),address,
+						 *(curr_transmt_pos + TRMS_CMD_OFST));
+
+	// Data
+	curr_transmt_pos += TRMS_DATA_OFST;
+	for (i = 0; i < curr_length; i++)
+		// Copy first packet into output buffer
+		packet[PCKT_DATA_OFST + i] = *curr_transmt_pos++;
+
+	SPI_RFT_Write_Packet(packet,curr_length + PROTO_BYTES_CNT);
+}
+
 void RX_Complete(void)
 {
-  uint8_t i, sender;
-  uint16_t* temp;
-  uint32_t dsum;
+  uint8_t sender;
+  uint32_t dsum, i;
+	uint16_t curr_length;
 	float sum;
 
   if ((packet[PCKT_TO_OFST] == address) || (packet[PCKT_TO_OFST] == BROADCAST_ADDRESS))
@@ -107,6 +235,41 @@ void RX_Complete(void)
 				TIM_Cmd(TIM6,ENABLE);
 			}
 		}
+		if (is_transmit)
+		{
+			// Transmission in progress
+			// All received packets should be packed to output packet
+			curr_length = packet_length - PROTO_BYTES_CNT;
+			*(data_len_t*)curr_pack_pos = curr_length;
+			curr_pack_pos += DATA_LENGTH;
+			*(curr_pack_pos + TRMS_TO_OFST) = sender;
+			*(curr_pack_pos + TRMS_CMD_OFST) = packet[PCKT_CMD_OFST];
+			curr_pack_pos += TRMS_DATA_OFST;
+			for (i = 0; i < curr_length; i++)
+			{
+				*curr_pack_pos++ = packet[PCKT_DATA_OFST + i];
+			}
+			transmt_index++;
+			if (transmt_index < transmt_count)
+			{
+				// Still have something to transmit
+				TransmitNextFromBuffer();
+			}
+			else
+			{
+				// Nothing to transmit; send packet to main sender
+				out_trans[PCKT_TO_OFST] = current_transmission_from;
+				out_trans[PCKT_FROM_OFST] = address;
+				out_trans[PCKT_CMD_OFST] = PACKET_TYPE_TRSMT;
+				out_trans[PCKT_DATA_OFST] = transmt_count;
+
+				curr_length = curr_pack_pos - out_trans;
+				SPI_RFT_Write_Packet(out_trans,curr_length);
+
+				is_transmit = 0;
+			}
+			return;
+		}
     switch (packet[PCKT_CMD_OFST])
     {
       case PACKET_TYPE_INIT:  // device initialization
@@ -114,46 +277,42 @@ void RX_Complete(void)
 				if (GetPeripheralParams().b.is_power_save)
 				{
 					// Start to count time between packets
-					for (i = 0; i < TIME_PERIODS_COUNT; i++)
-						time_periods[i] = 0;
-					period_number = 0;
-					is_sampling = 1;
-					TIM_Cmd(TIM6,ENABLE);
+					StartTimer6();
 					MakePacket(sender,address,PACKET_TYPE_OK);
           SPI_RFT_Write_Packet(packet,PROTO_BYTES_CNT);
 				}
 				break;
 			}
-      case PACKET_TYPE_OUT:  // output data
+      case PACKET_TYPE_REQ:  // output data
       {
-        /* setting outputs */
-        temp = (uint16_t*)(packet + PROTO_BYTES_CNT);
-        if (GetPeripheralParams().b.dac_enabled)
-        {
-          WriteDACs(++temp);
-          temp += 8;
-        }
-        if (GetPeripheralParams().b.output_enabled)
-          SetLogicOutputs(*(uint32_t*)temp);
+        SetOutputs((uint16_t*)(packet + PCKT_DATA_OFST));
+        GetOutputs((uint16_t*)(packet + PCKT_DATA_OFST),&packet_length);
 
-        /* getting inputs */
-        temp = (uint16_t*)(packet + PROTO_BYTES_CNT);
-        packet_length = 0;
-        if (GetPeripheralParams().b.adc_enabled)
-        {
-          for (i = 0; i < 8; i++)
-            *temp++ = ReadADC(i);
-          packet_length += 16;
-        }
-        if (GetPeripheralParams().b.input_enabled)
-        {
-          *(uint32_t*)temp = GetLogicInputs();
-          packet_length += 4;
-        }
 				MakePacket(sender,address,PACKET_TYPE_ANS);
         SPI_RFT_Write_Packet(packet,packet_length + PROTO_BYTES_CNT);
         break;
       }
+			case PACKET_TYPE_TRSMT:		// Incapsulated packets
+			{
+				if (!is_transmit)		// First request
+				{
+					current_transmission_from = sender;
+					is_transmit = 1;
+					for (i = 0; i < packet_length; i++)
+					{
+						// Copy received packet to buffer
+						in_trans[i] = packet[i];
+					}
+					// Start first transmission
+					transmt_count = in_trans[PCKT_DATA_OFST];
+					transmt_index = 0;
+					curr_pack_pos = &out_trans[PCKT_DATA_OFST + 1];
+					curr_transmt_pos = &in_trans[PCKT_DATA_OFST + 1];
+
+					TransmitNextFromBuffer();
+				}
+				break;
+			}
     }
   }
 }
@@ -161,7 +320,7 @@ void RX_Complete(void)
 uint8_t* RX_Begin(data_len_t length)
 {
   packet_length = length;
-  if ((length < 3) || (length > sizeof(packet)))
+  if ((length < PROTO_BYTES_CNT) || (length > sizeof(packet)))
     return NULL;
   else
     return packet;
