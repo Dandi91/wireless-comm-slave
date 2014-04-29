@@ -8,7 +8,10 @@
 #define NULL    0
 #endif
 
-#define MAX_PACKET_LOAD 128
+typedef uint16_t data_len_t;		// Type used for data length field in packets
+#define PROTO_BYTES_CNT 3				// Number of protocol bytes - addresses and commands
+#define SRVC_BYTES_CNT 4				// Number of service bytes - preambule and sync. word
+#define MAX_PACKET_LOAD 4096		// Max. number of bytes in packet's data field
 
 // Cycle buffer item's types
 #define RFT_ITEM_CMD	0x0001		// Command item
@@ -330,7 +333,7 @@ typedef struct
 	void (*TxComplete)(void);
 	void (*RxComplete)(void);
 	// Gets length for packet, returns pointer to buffer
-  uint8_t* (*RxBegin)(uint8_t length);
+  uint8_t* (*RxBegin)(data_len_t length);
 	void (*EventOccurred)(SPI_RFT_Event event);
   void (*BufferFilled)(void);
 } SPI_RFT_cb_TypeDef;
@@ -348,7 +351,7 @@ SPI_RFT_Retval SPI_RFT_Disable_Receiver(void);
 SPI_RFT_Retval SPI_RFT_Enter_Sleep_Mode(void);
 
 SPI_RFT_Retval SPI_RFT_Start_Polling(void);
-SPI_RFT_Retval SPI_RFT_Write_Packet(uint8_t address, uint8_t back_address, uint8_t packet_type, uint8_t* data, uint8_t data_len);
+SPI_RFT_Retval SPI_RFT_Write_Packet(uint8_t* data, data_len_t data_len);
 
 SPI_RFT_Retval SPI_RFT_Set_Flags(SPI_RFT_Register reg_index, uint16_t flags);
 SPI_RFT_Retval SPI_RFT_Reset_Flags(SPI_RFT_Register reg_index, uint16_t flags);

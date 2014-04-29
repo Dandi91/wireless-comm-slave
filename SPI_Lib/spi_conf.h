@@ -12,4 +12,3 @@
 #define SPIx_IRQn         SPI1_IRQn
 
 #define BUFFER_LENGTH			32
-#define PACKET_MAX_LENGTH 255

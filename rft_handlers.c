@@ -8,14 +8,20 @@
 // Additional number of cycles for startup
 #define WARM_UP_TIME 10
 
-#define DEFAULT_MASTER_ADDRESS 0x01
+#define DEFAULT_MASTER_ADDRESS	0x01
+#define BROADCAST_ADDRESS				0xFF
 
 #define PACKET_TYPE_INIT  0x00
 #define PACKET_TYPE_ANS   0x01
 #define PACKET_TYPE_OUT   0x02
 #define PACKET_TYPE_OK    0xFF
 
-uint8_t packet[MAX_PACKET_LOAD + 3];
+// Fields
+#define PCKT_TO_OFST		0x00
+#define PCKT_FROM_OFST	0x01
+#define PCKT_CMD_OFST		0x02
+
+uint8_t packet[MAX_PACKET_LOAD + PROTO_BYTES_CNT];
 uint8_t packet_length, address;
 
 uint8_t period_number, is_sampling = 0;
@@ -50,6 +56,13 @@ void TX_Complete(void)
   SPI_RFT_Start_Polling();
 }
 
+void MakePacket(uint8_t to, uint8_t from, uint8_t cmd)
+{
+	packet[PCKT_TO_OFST] = to;
+	packet[PCKT_FROM_OFST] = from;
+	packet[PCKT_CMD_OFST] = cmd;
+}
+
 void RX_Complete(void)
 {
   uint8_t i, sender;
@@ -57,9 +70,9 @@ void RX_Complete(void)
   uint32_t dsum;
 	float sum;
 
-  if ((packet[0] == address) || (packet[0] == 0xFF))
+  if ((packet[PCKT_TO_OFST] == address) || (packet[PCKT_TO_OFST] == BROADCAST_ADDRESS))
   {
-    sender = packet[1];
+    sender = packet[PCKT_FROM_OFST];
 		if (is_sampling)
 		{
 			TIM_Cmd(TIM6,DISABLE);
@@ -94,7 +107,7 @@ void RX_Complete(void)
 				TIM_Cmd(TIM6,ENABLE);
 			}
 		}
-    switch (packet[2])
+    switch (packet[PCKT_CMD_OFST])
     {
       case PACKET_TYPE_INIT:  // device initialization
       {
@@ -106,14 +119,15 @@ void RX_Complete(void)
 					period_number = 0;
 					is_sampling = 1;
 					TIM_Cmd(TIM6,ENABLE);
-          SPI_RFT_Write_Packet(sender,address,PACKET_TYPE_OK,NULL,0);
+					MakePacket(sender,address,PACKET_TYPE_OK);
+          SPI_RFT_Write_Packet(packet,PROTO_BYTES_CNT);
 				}
 				break;
 			}
       case PACKET_TYPE_OUT:  // output data
       {
         /* setting outputs */
-        temp = (uint16_t*)&packet[3];
+        temp = (uint16_t*)(packet + PROTO_BYTES_CNT);
         if (GetPeripheralParams().b.dac_enabled)
         {
           WriteDACs(++temp);
@@ -123,7 +137,7 @@ void RX_Complete(void)
           SetLogicOutputs(*(uint32_t*)temp);
 
         /* getting inputs */
-        temp = (uint16_t*)packet;
+        temp = (uint16_t*)(packet + PROTO_BYTES_CNT);
         packet_length = 0;
         if (GetPeripheralParams().b.adc_enabled)
         {
@@ -136,14 +150,15 @@ void RX_Complete(void)
           *(uint32_t*)temp = GetLogicInputs();
           packet_length += 4;
         }
-        SPI_RFT_Write_Packet(sender,address,PACKET_TYPE_ANS,packet,packet_length);
+				MakePacket(sender,address,PACKET_TYPE_ANS);
+        SPI_RFT_Write_Packet(packet,packet_length + PROTO_BYTES_CNT);
         break;
       }
     }
   }
 }
 
-uint8_t* RX_Begin(uint8_t length)
+uint8_t* RX_Begin(data_len_t length)
 {
   packet_length = length;
   if ((length < 3) || (length > sizeof(packet)))

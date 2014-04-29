@@ -12,14 +12,14 @@
       <ToolsetName>ARM-ADS</ToolsetName>
       <TargetOption>
         <TargetCommonOption>
-          <Device>STM32F373V8</Device>
+          <Device>STM32F373VB</Device>
           <Vendor>STMicroelectronics</Vendor>
-          <Cpu>IROM(0x08000000,0x10000) IRAM(0x20000000,0x4000) CPUTYPE("Cortex-M4") FPU2 CLOCK(72000000) ELITTLE</Cpu>
+          <Cpu>IROM(0x08000000,0x20000) IRAM(0x20000000,0x6000) CPUTYPE("Cortex-M4") FPU2 CLOCK(72000000) ELITTLE</Cpu>
           <FlashUtilSpec></FlashUtilSpec>
           <StartupFile></StartupFile>
-          <FlashDriverDll>UL2CM3(-S0 -C0 -P0 -FD20000000 -FC1000 -FN1 -FF0STM32F3xx_256 -FS08000000 -FL040000 -FP0($$Device:STM32F373V8$Flash\STM32F3xx_256.FLM))</FlashDriverDll>
-          <DeviceId>6391</DeviceId>
-          <RegisterFile>$$Device:STM32F373V8$Device\Include\STM32F37x.h</RegisterFile>
+          <FlashDriverDll>UL2CM3(-S0 -C0 -P0 -FD20000000 -FC1000 -FN1 -FF0STM32F3xx_256 -FS08000000 -FL040000 -FP0($$Device:STM32F373VB$Flash\STM32F3xx_256.FLM))</FlashDriverDll>
+          <DeviceId>6385</DeviceId>
+          <RegisterFile>$$Device:STM32F373VB$Device\Include\STM32F37x.h</RegisterFile>
           <MemoryEnv></MemoryEnv>
           <Cmp></Cmp>
           <Asm></Asm>
@@ -29,7 +29,7 @@
           <SLE66CMisc></SLE66CMisc>
           <SLE66AMisc></SLE66AMisc>
           <SLE66LinkerMisc></SLE66LinkerMisc>
-          <SFDFile>$$Device:STM32F373V8$SVD\STM32F37x.svd</SFDFile>
+          <SFDFile>$$Device:STM32F373VB$SVD\STM32F37x.svd</SFDFile>
           <bCustSvd>0</bCustSvd>
           <UseEnv>0</UseEnv>
           <BinPath></BinPath>
@@ -276,12 +276,12 @@
               <IRAM>
                 <Type>0</Type>
                 <StartAddress>0x20000000</StartAddress>
-                <Size>0x4000</Size>
+                <Size>0x6000</Size>
               </IRAM>
               <IROM>
                 <Type>1</Type>
                 <StartAddress>0x8000000</StartAddress>
-                <Size>0x10000</Size>
+                <Size>0x20000</Size>
               </IROM>
               <XRAM>
                 <Type>0</Type>
@@ -306,7 +306,7 @@
               <OCR_RVCT4>
                 <Type>1</Type>
                 <StartAddress>0x8000000</StartAddress>
-                <Size>0x10000</Size>
+                <Size>0x20000</Size>
               </OCR_RVCT4>
               <OCR_RVCT5>
                 <Type>1</Type>
@@ -331,7 +331,7 @@
               <OCR_RVCT9>
                 <Type>0</Type>
                 <StartAddress>0x20000000</StartAddress>
-                <Size>0x4000</Size>
+                <Size>0x6000</Size>
               </OCR_RVCT9>
               <OCR_RVCT10>
                 <Type>0</Type>
@@ -503,6 +503,11 @@
               <FileName>stm32f37x_pwr.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\STM32F37x_DSP_StdPeriph_Lib_V1.0.0\Libraries\STM32F37x_StdPeriph_Driver\src\stm32f37x_pwr.c</FilePath>
+            </File>
+            <File>
+              <FileName>stm32f37x_syscfg.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\STM32F37x_DSP_StdPeriph_Lib_V1.0.0\Libraries\STM32F37x_StdPeriph_Driver\src\stm32f37x_syscfg.c</FilePath>
             </File>
           </Files>
         </Group>

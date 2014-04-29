@@ -10,6 +10,6 @@ void Set_Address(uint8_t value);
 
 void TX_Complete(void);
 void RX_Complete(void);
-uint8_t* RX_Begin(uint8_t length);
+uint8_t* RX_Begin(data_len_t length);
 
 #endif

@@ -21,8 +21,9 @@ static uint16_t register_state[11] = {
 
 uint8_t sync_byte = 0xD4;
 
-uint8_t crypto_buffer_in[MAX_PACKET_LOAD + 3];
-uint8_t crypto_buffer_out[MAX_PACKET_LOAD + 8];
+#define CRC_BYTES_LENGTH 4		// 32 bit CRC - 4 bytes
+
+uint8_t crypto_buffer_out[MAX_PACKET_LOAD + PROTO_BYTES_CNT + sizeof(data_len_t) + SRVC_BYTES_CNT];
 
 typedef enum
 {
@@ -38,14 +39,6 @@ typedef enum
 	SPI_RFT_High
 } SPI_RFT_Priority;
 
-typedef struct
-{
-	uint16_t	reserved;
-  uint8_t   synch_byte_hi;
-	uint8_t		synch_byte_lo;
-  uint8_t 	packet_length;
-}	SPI_RFT_TX_Packet_Header;
-
 SPI_RFT_cb_TypeDef SPI_RFT_cb;
 
 uint8_t *rx_buffer, *tx_buffer;
@@ -54,9 +47,8 @@ SPI_RFT_Status  status; // RFT module status
 SPI_RFT_State   state;  // SPI transaction state
 
 SPI_RFT_Proc_State rx_state = SPI_RFT_Proc_Header, tx_state = SPI_RFT_Proc_Header;
-SPI_RFT_TX_Packet_Header tx_header;
-uint8_t *p_rx_header, *p_tx_header, *p_out_buffer;
-uint8_t rx_len = 0, tx_len = 0;
+uint8_t *p_out_buffer;
+uint16_t rx_len = 0, tx_len = 0;
 uint32_t rx_crc;
 
 uint8_t SPI_Busy = 0;
@@ -250,10 +242,10 @@ void SPI_RFT_SPI_Callback(uint16_t result)
 							}
 							SPI_RFT_Send_Data(RFT_CW_TXBREG | *tx_buffer++,RFT_ITEM_TXD);
 							tx_len++;
-							if (tx_len > 3)
+							if (tx_len > SRVC_BYTES_CNT - 1)
 							{
 								tx_state = SPI_RFT_Proc_Data;
-								tx_len = crypto_buffer_out[4];
+								tx_len = *(data_len_t*)&crypto_buffer_out[SRVC_BYTES_CNT];
 								CRC_Data_Index = 0;
 							}
 							break;
@@ -261,15 +253,15 @@ void SPI_RFT_SPI_Callback(uint16_t result)
 						case SPI_RFT_Proc_Data:
 						{
 							SPI_RFT_Send_Data(RFT_CW_TXBREG | *tx_buffer++,RFT_ITEM_TXD);
-							if (++CRC_Data_Index == 4)		// Get a dword
+							if (++CRC_Data_Index == CRC_BYTES_LENGTH)		// Get a dword
 							{
-								CRC_CalcCRC(*(uint32_t*)(&tx_buffer[-4]));
+								CRC_CalcCRC(*(uint32_t*)(&tx_buffer[-CRC_BYTES_LENGTH]));
 								CRC_Data_Index = 0;
 							}
 							if (--tx_len == 0)	// Whole packet
 							{
 								if (CRC_Data_Index)			// This conctruction adds tailing zero-bytes to ending bytes of buffer
-									CRC_CalcCRC((*(uint32_t*)(&tx_buffer[-CRC_Data_Index])) & (0xFFFFFFFF >> ((4 - CRC_Data_Index) * 8)));
+									CRC_CalcCRC((*(uint32_t*)(&tx_buffer[-CRC_Data_Index])) & (0xFFFFFFFF >> ((CRC_BYTES_LENGTH - CRC_Data_Index) * 8)));
 								tx_state = SPI_RFT_Proc_CRC;
 								CRC_Data_Index = 0;
 							}
@@ -277,7 +269,7 @@ void SPI_RFT_SPI_Callback(uint16_t result)
 						}
 						case SPI_RFT_Proc_CRC:
 						{
-							if (CRC_Data_Index == 4)
+							if (CRC_Data_Index == CRC_BYTES_LENGTH)
 							{
 								tx_state = SPI_RFT_Proc_Dummy;
 								SPI_RFT_Send_Data(RFT_CW_TXBREG,RFT_ITEM_TXD);	// Send dummy byte
@@ -311,6 +303,7 @@ void SPI_RFT_SPI_Callback(uint16_t result)
 					if (rx_len == 0) // First byte
 					{
 						CRC_ResetDR();								// Setup state and CRC32
+						rx_buffer = crypto_buffer_out;
 						state = SPI_RFT_RX;
 					}
 				}
@@ -351,38 +344,42 @@ void SPI_RFT_SPI_Callback(uint16_t result)
 		{
 			case SPI_RFT_Proc_Header:
 			{
-        rx_len = result & 0xFF;
-        if (rx_len > MAX_PACKET_LOAD + 4)
-        {
-          SPI_RFT_Rearm_Receiver();
-          break;
-        }
-        rx_state = SPI_RFT_Proc_Data;
-        if (SPI_RFT_cb.RxBegin != NULL)
-          p_out_buffer = SPI_RFT_cb.RxBegin(rx_len - 1);    // Callback
-        if (p_out_buffer == NULL)
-        {
-          SPI_RFT_Rearm_Receiver();
-          break;
-        }
-        crypto_buffer_out[0] = rx_len;
-        rx_len = rx_len - 1;
-        rx_buffer = crypto_buffer_out + 1;
-        CRC_Data_Index = 1;
+				*rx_buffer++ = result & 0xFF;
+				rx_len++;
+				if (rx_len == sizeof(data_len_t))
+				{
+					// Data length received
+					rx_len = *(data_len_t*)crypto_buffer_out;
+					if (rx_len > (MAX_PACKET_LOAD + PROTO_BYTES_CNT + sizeof(data_len_t)))
+					{
+						SPI_RFT_Rearm_Receiver();
+						break;
+					}
+					rx_state = SPI_RFT_Proc_Data;
+					if (SPI_RFT_cb.RxBegin != NULL)
+						p_out_buffer = SPI_RFT_cb.RxBegin(rx_len - sizeof(data_len_t)); // Callback
+					if (p_out_buffer == NULL)
+					{
+						SPI_RFT_Rearm_Receiver();
+						break;
+					}
+					rx_len = rx_len - sizeof(data_len_t);
+					CRC_Data_Index = sizeof(data_len_t);
+				}
 				break;
 			}
 			case SPI_RFT_Proc_Data:  // if packet data
 			{
 				*rx_buffer++ = result & 0xFF;
-				if (++CRC_Data_Index == 4)		// Get a dword
+				if (++CRC_Data_Index == CRC_BYTES_LENGTH)		// Get a dword
 				{
-					CRC_CalcCRC(*(uint32_t*)(&rx_buffer[-4]));
+					CRC_CalcCRC(*(uint32_t*)(&rx_buffer[-CRC_BYTES_LENGTH]));
 					CRC_Data_Index = 0;
 				}
 				if (--rx_len == 0)  // Whole packet
 				{
 					if (CRC_Data_Index)			// This conctruction adds tailing zero-bytes to ending bytes of buffer
-						CRC_CalcCRC((*(uint32_t*)(&rx_buffer[-CRC_Data_Index])) & (0xFFFFFFFF >> ((4 - CRC_Data_Index) * 8)));
+						CRC_CalcCRC((*(uint32_t*)(&rx_buffer[-CRC_Data_Index])) & (0xFFFFFFFF >> ((CRC_BYTES_LENGTH - CRC_Data_Index) * 8)));
 					rx_state = SPI_RFT_Proc_CRC;
 					CRC_Data_Index = 0;
 				}
@@ -393,7 +390,7 @@ void SPI_RFT_SPI_Callback(uint16_t result)
 				if (CRC_Data_Index++ == 0)
 					rx_buffer = (uint8_t*)&rx_crc;
 				*rx_buffer++ = result & 0xFF;
-				if (CRC_Data_Index == 4)	// Whole CRC received
+				if (CRC_Data_Index == CRC_BYTES_LENGTH)	// Whole CRC received
 				{
 					SPI_RFT_Rearm_Receiver();
 					if (rx_crc != CRC_GetCRC())
@@ -403,7 +400,7 @@ void SPI_RFT_SPI_Callback(uint16_t result)
 					}
 					else
 					{
-            if (Crypt_Bytes(&crypto_buffer_out[1],p_out_buffer,crypto_buffer_out[0] - 1) == AES_SUCCESS)
+            if (Crypt_Bytes(&crypto_buffer_out[sizeof(data_len_t)],p_out_buffer,*(data_len_t*)&crypto_buffer_out - sizeof(data_len_t)) == AES_SUCCESS)
             {
               if (SPI_RFT_cb.RxComplete != NULL)
                 SPI_RFT_cb.RxComplete();  // Callback
@@ -448,26 +445,22 @@ void SPI_RFT_IRO_IRQHandler(void)
 }
 
 // Function to send data. It automatically turns on TX module before transmission.
-SPI_RFT_Retval SPI_RFT_Write_Packet(uint8_t address, uint8_t back_address, uint8_t packet_type, uint8_t* data, uint8_t data_len)
+SPI_RFT_Retval SPI_RFT_Write_Packet(uint8_t* data, data_len_t data_len)
 {
 	SPI_RFT_Retval a;
-  uint8_t i;
 
 	if (data_len > MAX_PACKET_LOAD)
 		return SPI_RFT_Error;
 
+	// Service fields are here
 	*(uint32_t*)crypto_buffer_out = 0xAAAA;
   crypto_buffer_out[2] = 0x2D;
 	crypto_buffer_out[3] = sync_byte;
-  crypto_buffer_out[4] = data_len + 3;
 
-  crypto_buffer_in[0] = address;
-  crypto_buffer_in[1] = back_address;
-  crypto_buffer_in[2] = packet_type;
+	// Packet's length
+  *(data_len_t*)&crypto_buffer_out[SRVC_BYTES_CNT] = data_len + PROTO_BYTES_CNT + sizeof(data_len_t);
 
-  for (i = 0; i < data_len; i++)
-    crypto_buffer_in[i + 3] = data[i];
-  Crypt_Bytes(crypto_buffer_in,crypto_buffer_out + 5,data_len + 3);
+  Crypt_Bytes(data,crypto_buffer_out + SRVC_BYTES_CNT + sizeof(data_len_t),data_len);
 
 	a = SPI_RFT_Enable_Transmitter();
   if (a != SPI_RFT_OK)

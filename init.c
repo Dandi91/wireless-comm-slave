@@ -70,6 +70,8 @@ void RFTPortsInit(void)
 	InitStructure.EXTI_Mode = EXTI_Mode_Interrupt;
 	InitStructure.EXTI_Trigger = EXTI_Trigger_Falling;
 	EXTI_Init(&InitStructure);
+	
+	SYSCFG_EXTILineConfig(EXTI_PortSourceGPIOA,EXTI_PinSource15);
 
   NVIC_EnableIRQ(EXTI15_10_IRQn);
   if (!GPIO_ReadInputDataBit(GPIOA,GPIO_Pin_15))
