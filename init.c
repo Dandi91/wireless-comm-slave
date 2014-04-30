@@ -70,7 +70,7 @@ void RFTPortsInit(void)
 	InitStructure.EXTI_Mode = EXTI_Mode_Interrupt;
 	InitStructure.EXTI_Trigger = EXTI_Trigger_Falling;
 	EXTI_Init(&InitStructure);
-	
+
 	SYSCFG_EXTILineConfig(EXTI_PortSourceGPIOA,EXTI_PinSource15);
 
   NVIC_EnableIRQ(EXTI15_10_IRQn);
@@ -180,10 +180,22 @@ void Initialization(uint8_t is_config)
     NVIC_SetPriority(SDADC1_IRQn,0);
     NVIC_SetPriority(SPI1_IRQn,1);
     NVIC_SetPriority(EXTI15_10_IRQn,2);
+    NVIC_SetPriority(TIM7_IRQn,3);
 
 		// Configuring wakeup pins
 		PWR_WakeUpPinCmd(PWR_WakeUpPin_1,DISABLE);
 		PWR_WakeUpPinCmd(PWR_WakeUpPin_2,DISABLE);
 		PWR_WakeUpPinCmd(PWR_WakeUpPin_3,DISABLE);
+
+    // Configure transmission timeout timer
+    RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM7,ENABLE);
+
+    TIM_TimeBaseStructInit(&Init);
+    Init.TIM_Prescaler = 48000; // 24000000 / 48000 = 500 Hz
+    Init.TIM_Period = TRMS_TIMEOUT_PERIOD;
+    TIM_TimeBaseInit(TIM7,&Init);
+
+    TIM_ITConfig(TIM7,TIM_IT_Update,ENABLE);
+    NVIC_EnableIRQ(TIM7_IRQn);
   }
 }

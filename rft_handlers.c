@@ -11,12 +11,13 @@
 #define DEFAULT_MASTER_ADDRESS	0x01
 #define BROADCAST_ADDRESS				0xFF
 
-#define PACKET_TYPE_INIT  0x00
-#define PACKET_TYPE_ANS   0x01
-#define PACKET_TYPE_REQ   0x02
-#define PACKET_TYPE_TRSMT	0x03
-#define PACKET_TYPE_ECHO	0xFD
-#define PACKET_TYPE_OK    0xFF
+#define PACKET_TYPE_INIT      0x00
+#define PACKET_TYPE_ANS       0x01
+#define PACKET_TYPE_REQ       0x02
+#define PACKET_TYPE_TRSMT     0x03
+#define PACKET_TYPE_ECHO      0xFD
+#define PACKET_TYPE_TIMEOUT   0xFE
+#define PACKET_TYPE_OK        0xFF
 
 #define DATA_LENGTH			(sizeof(data_len_t))
 
@@ -40,7 +41,7 @@ data_len_t packet_length;
 uint8_t address;
 
 uint8_t period_number, is_sampling = 0;
-uint8_t current_transmission_from, is_transmit = 0;
+uint8_t current_transmission_from, current_transmission_to, is_transmit = 0;
 uint8_t transmt_count, transmt_index;
 uint16_t time_periods[TIME_PERIODS_COUNT];
 uint8_t *curr_transmt_pos, *curr_pack_pos;
@@ -48,6 +49,15 @@ uint8_t *curr_transmt_pos, *curr_pack_pos;
 void Set_Address(uint8_t value)
 {
   address = value;
+}
+
+void CopyBuffer(uint8_t *source, uint8_t *dest, uint32_t length)
+{
+  uint32_t i;
+
+  i = 0;
+  while (i++ < length)
+    *dest++ = *source++;
 }
 
 void EXTI15_10_IRQHandler(void)
@@ -121,6 +131,15 @@ void SetOutputs(uint16_t *p)
     SetLogicOutputs(*(uint32_t*)p);
 }
 
+void MakeTransPacket(data_len_t len, uint8_t to, uint8_t cmd)
+{
+  *(data_len_t*)curr_pack_pos = len;
+  curr_pack_pos += DATA_LENGTH;
+  *(curr_pack_pos + TRMS_TO_OFST) = to;
+  *(curr_pack_pos + TRMS_CMD_OFST) = cmd;
+  curr_pack_pos += TRMS_DATA_OFST;
+}
+
 void HandlePacket(uint8_t *h_packet)
 {
   data_len_t *temp;
@@ -133,11 +152,7 @@ void HandlePacket(uint8_t *h_packet)
       {
         // Start to count time between packets
         StartTimer6();
-        *(data_len_t*)curr_pack_pos = 0;
-        curr_pack_pos += DATA_LENGTH;
-        *(curr_pack_pos + TRMS_TO_OFST) = address;
-        *(curr_pack_pos + TRMS_CMD_OFST) = PACKET_TYPE_OK;
-        curr_pack_pos += TRMS_DATA_OFST;
+        MakeTransPacket(0,address,PACKET_TYPE_OK);
       }
       break;
     }
@@ -148,10 +163,7 @@ void HandlePacket(uint8_t *h_packet)
 
       /* getting outputs */
       temp = (data_len_t*)curr_pack_pos;
-      curr_pack_pos += DATA_LENGTH;
-      *(curr_pack_pos + TRMS_TO_OFST) = address;
-      *(curr_pack_pos + TRMS_CMD_OFST) = PACKET_TYPE_ANS;
-      curr_pack_pos += TRMS_DATA_OFST;
+      MakeTransPacket(0,address,PACKET_TYPE_ANS);
       GetOutputs((uint16_t*)curr_pack_pos,temp);
 
       curr_pack_pos += *temp;
@@ -160,10 +172,9 @@ void HandlePacket(uint8_t *h_packet)
   }
 }
 
-
 void TransmitNextFromBuffer(void)
 {
-	uint32_t curr_length, i;
+	uint32_t curr_length;
 
 	// Check with ourselves
 	if (*(curr_transmt_pos + DATA_LENGTH + TRMS_TO_OFST) == address)
@@ -179,16 +190,34 @@ void TransmitNextFromBuffer(void)
 	curr_transmt_pos += DATA_LENGTH;
 
 	// Protocol fields
-	MakePacket(*(curr_transmt_pos + TRMS_TO_OFST),address,
+  current_transmission_to = *(curr_transmt_pos + TRMS_TO_OFST);
+	MakePacket(current_transmission_to,address,
 						 *(curr_transmt_pos + TRMS_CMD_OFST));
 
 	// Data
 	curr_transmt_pos += TRMS_DATA_OFST;
-	for (i = 0; i < curr_length; i++)
-		// Copy first packet into output buffer
-		packet[PCKT_DATA_OFST + i] = *curr_transmt_pos++;
+  CopyBuffer(curr_transmt_pos,&packet[PCKT_DATA_OFST],curr_length);
+  curr_transmt_pos += curr_length;
 
+  // Send
 	SPI_RFT_Write_Packet(packet,curr_length + PROTO_BYTES_CNT);
+
+  // Start timeout timer
+  TIM_ITConfig(TIM7,TIM_IT_Update,DISABLE);
+  TIM_GenerateEvent(TIM7,TIM_EventSource_Update);
+  TIM_Cmd(TIM7,ENABLE);
+  TIM_ITConfig(TIM7,TIM_IT_Update,ENABLE);
+}
+
+void TIM7_IRQHandler(void)
+{
+  if (TIM_GetFlagStatus(TIM7,TIM_FLAG_Update) == SET)
+  {
+    TIM_ClearFlag(TIM7,TIM_FLAG_Update);
+    TIM_Cmd(TIM7,DISABLE);
+    MakeTransPacket(0,current_transmission_to,PACKET_TYPE_TIMEOUT);
+    TransmitNextFromBuffer();
+  }
 }
 
 void RX_Complete(void)
@@ -240,15 +269,10 @@ void RX_Complete(void)
 			// Transmission in progress
 			// All received packets should be packed to output packet
 			curr_length = packet_length - PROTO_BYTES_CNT;
-			*(data_len_t*)curr_pack_pos = curr_length;
-			curr_pack_pos += DATA_LENGTH;
-			*(curr_pack_pos + TRMS_TO_OFST) = sender;
-			*(curr_pack_pos + TRMS_CMD_OFST) = packet[PCKT_CMD_OFST];
-			curr_pack_pos += TRMS_DATA_OFST;
-			for (i = 0; i < curr_length; i++)
-			{
-				*curr_pack_pos++ = packet[PCKT_DATA_OFST + i];
-			}
+      MakeTransPacket(curr_length,sender,packet[PCKT_CMD_OFST]);
+      CopyBuffer(&packet[PCKT_DATA_OFST],curr_pack_pos,curr_length);
+      curr_pack_pos += curr_length;
+      // Check next packet
 			transmt_index++;
 			if (transmt_index < transmt_count)
 			{
@@ -298,11 +322,9 @@ void RX_Complete(void)
 				{
 					current_transmission_from = sender;
 					is_transmit = 1;
-					for (i = 0; i < packet_length; i++)
-					{
-						// Copy received packet to buffer
-						in_trans[i] = packet[i];
-					}
+          // Copy to independent buffer
+          CopyBuffer(packet,in_trans,packet_length);
+
 					// Start first transmission
 					transmt_count = in_trans[PCKT_DATA_OFST];
 					transmt_index = 0;

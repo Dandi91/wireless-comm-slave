@@ -7,6 +7,9 @@
 #include <STM32F37x.h>
 #include "mrf49xa.h"
 
+// 1 digit = 2 ms
+#define TRMS_TIMEOUT_PERIOD   30
+
 // Wrap above the address value
 void Set_Address(uint8_t value);
 
