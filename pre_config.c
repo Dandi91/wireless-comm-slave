@@ -23,7 +23,7 @@ void Process_USB_Get_Request(USB_SETUP_REQ *req)
       *dest++ = *source++;
 
     buffer[0] = REPORT_MEMORY;
-		USBD_CtlSendData(&USB_OTG_dev,buffer,sizeof(buffer));
+    USBD_CtlSendData(&USB_OTG_dev,buffer,sizeof(buffer));
   }
 }
 

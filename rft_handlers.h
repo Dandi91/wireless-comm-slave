@@ -1,5 +1,5 @@
 // Event handlers for the wireless module
-// Implementation of the tramsmission protocol 
+// Implementation of the tramsmission protocol
 
 #ifndef __RFT_HANDLERS_H__
 #define __RFT_HANDLERS_H__

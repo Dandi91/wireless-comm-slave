@@ -16,14 +16,14 @@
   *
   *        http://www.st.com/software_license_agreement_liberty_v2
   *
-  * Unless required by applicable law or agreed to in writing, software 
-  * distributed under the License is distributed on an "AS IS" BASIS, 
+  * Unless required by applicable law or agreed to in writing, software
+  * distributed under the License is distributed on an "AS IS" BASIS,
   * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
   * See the License for the specific language governing permissions and
   * limitations under the License.
   *
   ******************************************************************************
-  */ 
+  */
 
 /* Includes ------------------------------------------------------------------*/
 #include "usbd_core.h"
@@ -37,22 +37,22 @@
   */
 
 
-/** @defgroup USBD_DESC 
+/** @defgroup USBD_DESC
   * @brief USBD descriptors module
   * @{
-  */ 
+  */
 
 /** @defgroup USBD_DESC_Private_TypesDefinitions
   * @{
-  */ 
+  */
 /**
   * @}
-  */ 
+  */
 
 
 /** @defgroup USBD_DESC_Private_Defines
   * @{
-  */ 
+  */
 
 #define USBD_VID                     0x0483
 #define USBD_PID                     0x5710
@@ -73,36 +73,36 @@
 #define USBD_INTERFACE_FS_STRING      "HID Interface"
 /**
   * @}
-  */ 
+  */
 
 
 /** @defgroup USBD_DESC_Private_Macros
   * @{
-  */ 
+  */
 /**
   * @}
-  */ 
+  */
 
 
 /** @defgroup USBD_DESC_Private_Variables
   * @{
-  */ 
+  */
 
 USBD_DEVICE USR_desc =
 {
   USBD_USR_DeviceDescriptor,
-  USBD_USR_LangIDStrDescriptor, 
+  USBD_USR_LangIDStrDescriptor,
   USBD_USR_ManufacturerStrDescriptor,
   USBD_USR_ProductStrDescriptor,
   USBD_USR_SerialStrDescriptor,
   USBD_USR_ConfigStrDescriptor,
   USBD_USR_InterfaceStrDescriptor,
-  
+
 };
 
 #ifdef USB_OTG_HS_INTERNAL_DMA_ENABLED
   #if defined ( __ICCARM__ ) /*!< IAR Compiler */
-    #pragma data_alignment=4   
+    #pragma data_alignment=4
   #endif
 #endif /* USB_OTG_HS_INTERNAL_DMA_ENABLED */
 /* USB Standard Device Descriptor */
@@ -130,7 +130,7 @@ __ALIGN_BEGIN uint8_t USBD_DeviceDesc[USB_SIZ_DEVICE_DESC] __ALIGN_END =
 
 #ifdef USB_OTG_HS_INTERNAL_DMA_ENABLED
   #if defined ( __ICCARM__ ) /*!< IAR Compiler */
-    #pragma data_alignment=4   
+    #pragma data_alignment=4
   #endif
 #endif /* USB_OTG_HS_INTERNAL_DMA_ENABLED */
 /* USB Standard Device Descriptor */
@@ -150,36 +150,36 @@ __ALIGN_BEGIN uint8_t USBD_DeviceQualifierDesc[USB_LEN_DEV_QUALIFIER_DESC] __ALI
 
 #ifdef USB_OTG_HS_INTERNAL_DMA_ENABLED
   #if defined ( __ICCARM__ ) /*!< IAR Compiler */
-    #pragma data_alignment=4   
+    #pragma data_alignment=4
   #endif
 #endif /* USB_OTG_HS_INTERNAL_DMA_ENABLED */
 /* USB Standard Device Descriptor */
 __ALIGN_BEGIN uint8_t USBD_LangIDDesc[USB_SIZ_STRING_LANGID] __ALIGN_END =
 {
-     USB_SIZ_STRING_LANGID,         
-     USB_DESC_TYPE_STRING,       
+     USB_SIZ_STRING_LANGID,
+     USB_DESC_TYPE_STRING,
      LOBYTE(USBD_LANGID_STRING),
-     HIBYTE(USBD_LANGID_STRING), 
+     HIBYTE(USBD_LANGID_STRING),
 };
 /**
   * @}
-  */ 
+  */
 
 
 /** @defgroup USBD_DESC_Private_FunctionPrototypes
   * @{
-  */ 
+  */
 /**
   * @}
-  */ 
+  */
 
 
 /** @defgroup USBD_DESC_Private_Functions
   * @{
-  */ 
+  */
 
 /**
-* @brief  USBD_USR_DeviceDescriptor 
+* @brief  USBD_USR_DeviceDescriptor
 *         return the device descriptor
 * @param  speed : current device speed
 * @param  length : pointer to data length variable
@@ -192,7 +192,7 @@ uint8_t *  USBD_USR_DeviceDescriptor( uint8_t speed , uint16_t *length)
 }
 
 /**
-* @brief  USBD_USR_LangIDStrDescriptor 
+* @brief  USBD_USR_LangIDStrDescriptor
 *         return the LangID string descriptor
 * @param  speed : current device speed
 * @param  length : pointer to data length variable
@@ -200,13 +200,13 @@ uint8_t *  USBD_USR_DeviceDescriptor( uint8_t speed , uint16_t *length)
 */
 uint8_t *  USBD_USR_LangIDStrDescriptor( uint8_t speed , uint16_t *length)
 {
-  *length =  sizeof(USBD_LangIDDesc);  
+  *length =  sizeof(USBD_LangIDDesc);
   return USBD_LangIDDesc;
 }
 
 
 /**
-* @brief  USBD_USR_ProductStrDescriptor 
+* @brief  USBD_USR_ProductStrDescriptor
 *         return the product string descriptor
 * @param  speed : current device speed
 * @param  length : pointer to data length variable
@@ -214,21 +214,21 @@ uint8_t *  USBD_USR_LangIDStrDescriptor( uint8_t speed , uint16_t *length)
 */
 uint8_t *  USBD_USR_ProductStrDescriptor( uint8_t speed , uint16_t *length)
 {
- 
-  
+
+
   if(speed == 0)
-  {   
+  {
     USBD_GetString (USBD_PRODUCT_HS_STRING, USBD_StrDesc, length);
   }
   else
   {
-    USBD_GetString (USBD_PRODUCT_FS_STRING, USBD_StrDesc, length);    
+    USBD_GetString (USBD_PRODUCT_FS_STRING, USBD_StrDesc, length);
   }
   return USBD_StrDesc;
 }
 
 /**
-* @brief  USBD_USR_ManufacturerStrDescriptor 
+* @brief  USBD_USR_ManufacturerStrDescriptor
 *         return the manufacturer string descriptor
 * @param  speed : current device speed
 * @param  length : pointer to data length variable
@@ -241,7 +241,7 @@ uint8_t *  USBD_USR_ManufacturerStrDescriptor( uint8_t speed , uint16_t *length)
 }
 
 /**
-* @brief  USBD_USR_SerialStrDescriptor 
+* @brief  USBD_USR_SerialStrDescriptor
 *         return the serial number string descriptor
 * @param  speed : current device speed
 * @param  length : pointer to data length variable
@@ -250,18 +250,18 @@ uint8_t *  USBD_USR_ManufacturerStrDescriptor( uint8_t speed , uint16_t *length)
 uint8_t *  USBD_USR_SerialStrDescriptor( uint8_t speed , uint16_t *length)
 {
   if(speed  == USB_OTG_SPEED_HIGH)
-  {    
+  {
     USBD_GetString (USBD_SERIALNUMBER_HS_STRING, USBD_StrDesc, length);
   }
   else
   {
-    USBD_GetString (USBD_SERIALNUMBER_FS_STRING, USBD_StrDesc, length);    
+    USBD_GetString (USBD_SERIALNUMBER_FS_STRING, USBD_StrDesc, length);
   }
   return USBD_StrDesc;
 }
 
 /**
-* @brief  USBD_USR_ConfigStrDescriptor 
+* @brief  USBD_USR_ConfigStrDescriptor
 *         return the configuration string descriptor
 * @param  speed : current device speed
 * @param  length : pointer to data length variable
@@ -270,19 +270,19 @@ uint8_t *  USBD_USR_SerialStrDescriptor( uint8_t speed , uint16_t *length)
 uint8_t *  USBD_USR_ConfigStrDescriptor( uint8_t speed , uint16_t *length)
 {
   if(speed  == USB_OTG_SPEED_HIGH)
-  {  
+  {
     USBD_GetString (USBD_CONFIGURATION_HS_STRING, USBD_StrDesc, length);
   }
   else
   {
-    USBD_GetString (USBD_CONFIGURATION_FS_STRING, USBD_StrDesc, length); 
+    USBD_GetString (USBD_CONFIGURATION_FS_STRING, USBD_StrDesc, length);
   }
-  return USBD_StrDesc;  
+  return USBD_StrDesc;
 }
 
 
 /**
-* @brief  USBD_USR_InterfaceStrDescriptor 
+* @brief  USBD_USR_InterfaceStrDescriptor
 *         return the interface string descriptor
 * @param  speed : current device speed
 * @param  length : pointer to data length variable
@@ -298,22 +298,22 @@ uint8_t *  USBD_USR_InterfaceStrDescriptor( uint8_t speed , uint16_t *length)
   {
     USBD_GetString (USBD_INTERFACE_FS_STRING, USBD_StrDesc, length);
   }
-  return USBD_StrDesc;  
+  return USBD_StrDesc;
 }
 
 /**
   * @}
-  */ 
+  */
 
 
 /**
   * @}
-  */ 
+  */
 
 
 /**
   * @}
-  */ 
+  */
 
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/
 

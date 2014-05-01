@@ -8,8 +8,8 @@
 // Additional number of cycles for startup
 #define WARM_UP_TIME 10
 
-#define DEFAULT_MASTER_ADDRESS	0x01
-#define BROADCAST_ADDRESS				0xFF
+#define DEFAULT_MASTER_ADDRESS  0x01
+#define BROADCAST_ADDRESS        0xFF
 
 #define PACKET_TYPE_INIT      0x00
 #define PACKET_TYPE_ANS       0x01
@@ -19,17 +19,17 @@
 #define PACKET_TYPE_TIMEOUT   0xFE
 #define PACKET_TYPE_OK        0xFF
 
-#define DATA_LENGTH			(sizeof(data_len_t))
+#define DATA_LENGTH      (sizeof(data_len_t))
 
 // Fields
-#define PCKT_TO_OFST		0x00
-#define PCKT_FROM_OFST	0x01
-#define PCKT_CMD_OFST		0x02
-#define PCKT_DATA_OFST	0x03
+#define PCKT_TO_OFST    0x00
+#define PCKT_FROM_OFST  0x01
+#define PCKT_CMD_OFST    0x02
+#define PCKT_DATA_OFST  0x03
 
-#define TRMS_TO_OFST		0x00
-#define TRMS_CMD_OFST		0x01
-#define TRMS_DATA_OFST	0x02
+#define TRMS_TO_OFST    0x00
+#define TRMS_CMD_OFST    0x01
+#define TRMS_DATA_OFST  0x02
 
 // Work packet
 uint8_t packet[MAX_PACKET_LOAD + PROTO_BYTES_CNT];
@@ -71,24 +71,24 @@ void EXTI15_10_IRQHandler(void)
 
 void TX_Complete(void)
 {
-	if (GetPeripheralParams().b.is_power_save && !is_sampling)
-	{
-		/* Enter sleep mode */
-		SPI_RFT_Enter_Sleep_Mode();
+  if (GetPeripheralParams().b.is_power_save && !is_sampling)
+  {
+    /* Enter sleep mode */
+    SPI_RFT_Enter_Sleep_Mode();
 
-		// Starting WUT
-		RTC_WakeUpCmd(ENABLE);
-		// Shut down
-		PWR_EnterSTANDBYMode();
-	}
+    // Starting WUT
+    RTC_WakeUpCmd(ENABLE);
+    // Shut down
+    PWR_EnterSTANDBYMode();
+  }
   SPI_RFT_Start_Polling();
 }
 
 void MakePacket(uint8_t to, uint8_t from, uint8_t cmd)
 {
-	packet[PCKT_TO_OFST] = to;
-	packet[PCKT_FROM_OFST] = from;
-	packet[PCKT_CMD_OFST] = cmd;
+  packet[PCKT_TO_OFST] = to;
+  packet[PCKT_FROM_OFST] = from;
+  packet[PCKT_CMD_OFST] = cmd;
 }
 
 void StartTimer6(void)
@@ -174,10 +174,10 @@ void HandlePacket(uint8_t *h_packet)
 
 void TransmitNextFromBuffer(void)
 {
-	uint32_t curr_length;
+  uint32_t curr_length;
 
-	// Check with ourselves
-	if (*(curr_transmt_pos + DATA_LENGTH + TRMS_TO_OFST) == address)
+  // Check with ourselves
+  if (*(curr_transmt_pos + DATA_LENGTH + TRMS_TO_OFST) == address)
   {
     // Recipient is we!
     curr_transmt_pos += DATA_LENGTH;
@@ -185,22 +185,22 @@ void TransmitNextFromBuffer(void)
     return;
   }
 
-	// Length
-	curr_length = *(data_len_t*)curr_transmt_pos;
-	curr_transmt_pos += DATA_LENGTH;
+  // Length
+  curr_length = *(data_len_t*)curr_transmt_pos;
+  curr_transmt_pos += DATA_LENGTH;
 
-	// Protocol fields
+  // Protocol fields
   current_transmission_to = *(curr_transmt_pos + TRMS_TO_OFST);
-	MakePacket(current_transmission_to,address,
-						 *(curr_transmt_pos + TRMS_CMD_OFST));
+  MakePacket(current_transmission_to,address,
+             *(curr_transmt_pos + TRMS_CMD_OFST));
 
-	// Data
-	curr_transmt_pos += TRMS_DATA_OFST;
+  // Data
+  curr_transmt_pos += TRMS_DATA_OFST;
   CopyBuffer(curr_transmt_pos,&packet[PCKT_DATA_OFST],curr_length);
   curr_transmt_pos += curr_length;
 
   // Send
-	SPI_RFT_Write_Packet(packet,curr_length + PROTO_BYTES_CNT);
+  SPI_RFT_Write_Packet(packet,curr_length + PROTO_BYTES_CNT);
 
   // Start timeout timer
   TIM_ITConfig(TIM7,TIM_IT_Update,DISABLE);
@@ -224,117 +224,117 @@ void RX_Complete(void)
 {
   uint8_t sender;
   uint32_t dsum, i;
-	uint16_t curr_length;
-	float sum;
+  uint16_t curr_length;
+  float sum;
 
   if ((packet[PCKT_TO_OFST] == address) || (packet[PCKT_TO_OFST] == BROADCAST_ADDRESS))
   {
     sender = packet[PCKT_FROM_OFST];
-		if (is_sampling)
-		{
-			TIM_Cmd(TIM6,DISABLE);
-			time_periods[period_number++] = TIM_GetCounter(TIM6);
+    if (is_sampling)
+    {
+      TIM_Cmd(TIM6,DISABLE);
+      time_periods[period_number++] = TIM_GetCounter(TIM6);
 
-			if (period_number >= TIME_PERIODS_COUNT)
-			{
-				/* Sampling complete! */
-				is_sampling = 0;
+      if (period_number >= TIME_PERIODS_COUNT)
+      {
+        /* Sampling complete! */
+        is_sampling = 0;
 
-				dsum = time_periods[0];
-				for (i = 1; i < TIME_PERIODS_COUNT; i++)
+        dsum = time_periods[0];
+        for (i = 1; i < TIME_PERIODS_COUNT; i++)
           if (dsum > time_periods[i])
             dsum = time_periods[i];
-				sum = (float)dsum / (float)TIME_PERIODS_COUNT;
+        sum = (float)dsum / (float)TIME_PERIODS_COUNT;
 
-				sum *= TIMER_SHIFTING_VALUE;
+        sum *= TIMER_SHIFTING_VALUE;
         dsum = sum - WARM_UP_TIME;
 
         if (dsum > 0xFFFF)
           dsum = 0xFFFF;
 
-				// Configure WUT
-				RTC_ITConfig(RTC_IT_WUT,ENABLE);
-				RTC_WakeUpCmd(DISABLE);
-				RTC_WakeUpClockConfig(RTC_WakeUpClock_RTCCLK_Div16);
-				RTC_SetWakeUpCounter(dsum);
-			}
-			else
-			{
-				TIM_SetCounter(TIM6,0);
-				TIM_Cmd(TIM6,ENABLE);
-			}
-		}
-		if (is_transmit)
-		{
-			// Transmission in progress
-			// All received packets should be packed to output packet
-			curr_length = packet_length - PROTO_BYTES_CNT;
+        // Configure WUT
+        RTC_ITConfig(RTC_IT_WUT,ENABLE);
+        RTC_WakeUpCmd(DISABLE);
+        RTC_WakeUpClockConfig(RTC_WakeUpClock_RTCCLK_Div16);
+        RTC_SetWakeUpCounter(dsum);
+      }
+      else
+      {
+        TIM_SetCounter(TIM6,0);
+        TIM_Cmd(TIM6,ENABLE);
+      }
+    }
+    if (is_transmit)
+    {
+      // Transmission in progress
+      // All received packets should be packed to output packet
+      curr_length = packet_length - PROTO_BYTES_CNT;
       MakeTransPacket(curr_length,sender,packet[PCKT_CMD_OFST]);
       CopyBuffer(&packet[PCKT_DATA_OFST],curr_pack_pos,curr_length);
       curr_pack_pos += curr_length;
       // Check next packet
-			transmt_index++;
-			if (transmt_index < transmt_count)
-			{
-				// Still have something to transmit
-				TransmitNextFromBuffer();
-			}
-			else
-			{
-				// Nothing to transmit; send packet to main sender
-				out_trans[PCKT_TO_OFST] = current_transmission_from;
-				out_trans[PCKT_FROM_OFST] = address;
-				out_trans[PCKT_CMD_OFST] = PACKET_TYPE_TRSMT;
-				out_trans[PCKT_DATA_OFST] = transmt_count;
+      transmt_index++;
+      if (transmt_index < transmt_count)
+      {
+        // Still have something to transmit
+        TransmitNextFromBuffer();
+      }
+      else
+      {
+        // Nothing to transmit; send packet to main sender
+        out_trans[PCKT_TO_OFST] = current_transmission_from;
+        out_trans[PCKT_FROM_OFST] = address;
+        out_trans[PCKT_CMD_OFST] = PACKET_TYPE_TRSMT;
+        out_trans[PCKT_DATA_OFST] = transmt_count;
 
-				curr_length = curr_pack_pos - out_trans;
-				SPI_RFT_Write_Packet(out_trans,curr_length);
+        curr_length = curr_pack_pos - out_trans;
+        SPI_RFT_Write_Packet(out_trans,curr_length);
 
-				is_transmit = 0;
-			}
-			return;
-		}
+        is_transmit = 0;
+      }
+      return;
+    }
     switch (packet[PCKT_CMD_OFST])
     {
       case PACKET_TYPE_INIT:  // device initialization
       {
-				if (GetPeripheralParams().b.is_power_save)
-				{
-					// Start to count time between packets
-					StartTimer6();
-					MakePacket(sender,address,PACKET_TYPE_OK);
+        if (GetPeripheralParams().b.is_power_save)
+        {
+          // Start to count time between packets
+          StartTimer6();
+          MakePacket(sender,address,PACKET_TYPE_OK);
           SPI_RFT_Write_Packet(packet,PROTO_BYTES_CNT);
-				}
-				break;
-			}
+        }
+        break;
+      }
       case PACKET_TYPE_REQ:  // output data
       {
         SetOutputs((uint16_t*)(packet + PCKT_DATA_OFST));
         GetOutputs((uint16_t*)(packet + PCKT_DATA_OFST),&packet_length);
 
-				MakePacket(sender,address,PACKET_TYPE_ANS);
+        MakePacket(sender,address,PACKET_TYPE_ANS);
         SPI_RFT_Write_Packet(packet,packet_length + PROTO_BYTES_CNT);
         break;
       }
-			case PACKET_TYPE_TRSMT:		// Incapsulated packets
-			{
-				if (!is_transmit)		// First request
-				{
-					current_transmission_from = sender;
-					is_transmit = 1;
+      case PACKET_TYPE_TRSMT:    // Incapsulated packets
+      {
+        if (!is_transmit)    // First request
+        {
+          current_transmission_from = sender;
+          is_transmit = 1;
           // Copy to independent buffer
           CopyBuffer(packet,in_trans,packet_length);
 
-					// Start first transmission
-					transmt_count = in_trans[PCKT_DATA_OFST];
-					transmt_index = 0;
-					curr_pack_pos = &out_trans[PCKT_DATA_OFST + 1];
-					curr_transmt_pos = &in_trans[PCKT_DATA_OFST + 1];
+          // Start first transmission
+          transmt_count = in_trans[PCKT_DATA_OFST];
+          transmt_index = 0;
+          curr_pack_pos = &out_trans[PCKT_DATA_OFST + 1];
+          curr_transmt_pos = &in_trans[PCKT_DATA_OFST + 1];
 
-					TransmitNextFromBuffer();
-				}
-				break;
-			}
+          TransmitNextFromBuffer();
+        }
+        break;
+      }
     }
   }
 }

@@ -45,6 +45,6 @@ Magic number 30240
   в режиме конфигурации
     USB_HP_IRQn
   в обычном режиме
-    SDADC1_IRQn 
+    SDADC1_IRQn
     SPI1_IRQn
     EXTI15_10_IRQn

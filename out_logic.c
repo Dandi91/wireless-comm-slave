@@ -2,26 +2,26 @@
 
 void SetLogicOutputs(uint32_t value)
 {
-	uint16_t* buffer;
+  uint16_t* buffer;
 
-	GPIO_ResetBits(GPIOA,GPIO_Pin_2);		// CS
-	buffer = (uint16_t*)&value;
+  GPIO_ResetBits(GPIOA,GPIO_Pin_2);    // CS
+  buffer = (uint16_t*)&value;
 
-	while (SPI_I2S_GetFlagStatus(SPI3,SPI_I2S_FLAG_RXNE) != SET);
-	SPI_I2S_SendData16(SPI3,*buffer++);
+  while (SPI_I2S_GetFlagStatus(SPI3,SPI_I2S_FLAG_RXNE) != SET);
+  SPI_I2S_SendData16(SPI3,*buffer++);
 
-	while (SPI_I2S_GetFlagStatus(SPI3,SPI_I2S_FLAG_RXNE) != SET);
-	SPI_I2S_SendData16(SPI3,*buffer);
+  while (SPI_I2S_GetFlagStatus(SPI3,SPI_I2S_FLAG_RXNE) != SET);
+  SPI_I2S_SendData16(SPI3,*buffer);
 
-	while (SPI_I2S_GetFlagStatus(SPI3,SPI_I2S_FLAG_RXNE) != SET);
+  while (SPI_I2S_GetFlagStatus(SPI3,SPI_I2S_FLAG_RXNE) != SET);
 
-	GPIO_SetBits(GPIOA,GPIO_Pin_2);			// CS
+  GPIO_SetBits(GPIOA,GPIO_Pin_2);      // CS
 }
 
 void ConfigureOutputInterface(void)
 {
   // APB1 Clock 16 MHz
-	// Clock < 2 MHz (24/16=1.5 MHz)
+  // Clock < 2 MHz (24/16=1.5 MHz)
   // MSB First
   // SPI(0,0), 16 bit
 

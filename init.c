@@ -62,59 +62,59 @@ void RFTPortsInit(void)
 
   GPIO_SetBits(GPIOA,GPIO_Pin_9);   // CS high
 
-	/* Configure IRO interrupt on PA15 */
-	EXTI_StructInit(&InitStructure);
+  /* Configure IRO interrupt on PA15 */
+  EXTI_StructInit(&InitStructure);
 
-	InitStructure.EXTI_Line = EXTI_Line15;
-	InitStructure.EXTI_LineCmd = ENABLE;
-	InitStructure.EXTI_Mode = EXTI_Mode_Interrupt;
-	InitStructure.EXTI_Trigger = EXTI_Trigger_Falling;
-	EXTI_Init(&InitStructure);
+  InitStructure.EXTI_Line = EXTI_Line15;
+  InitStructure.EXTI_LineCmd = ENABLE;
+  InitStructure.EXTI_Mode = EXTI_Mode_Interrupt;
+  InitStructure.EXTI_Trigger = EXTI_Trigger_Falling;
+  EXTI_Init(&InitStructure);
 
-	SYSCFG_EXTILineConfig(EXTI_PortSourceGPIOA,EXTI_PinSource15);
+  SYSCFG_EXTILineConfig(EXTI_PortSourceGPIOA,EXTI_PinSource15);
 
   NVIC_EnableIRQ(EXTI15_10_IRQn);
   if (!GPIO_ReadInputDataBit(GPIOA,GPIO_Pin_15))
-		EXTI_GenerateSWInterrupt(EXTI_Line15);
+    EXTI_GenerateSWInterrupt(EXTI_Line15);
 }
 
 void RFTInit(uint8_t full)
 {
-	RCC_APB2PeriphClockCmd(RCC_APB2Periph_SPI1,ENABLE);
+  RCC_APB2PeriphClockCmd(RCC_APB2Periph_SPI1,ENABLE);
   RCC_AHBPeriphClockCmd(RCC_AHBPeriph_CRC,ENABLE);
 
   SPI_RFT_Init(&RFT_cb);
 
-	if (full)
-	{
-		SPI_RFT_Set_FIFO_Fill_Count(8);
-		SPI_RFT_Set_Flags(SPI_RFT_Register_FIFORSTREG,DRSTM);
-		SPI_RFT_Restart_Synch_Pattern();
-		SPI_RFT_Set_Frequency_Band(SPI_RFT_Freq_Band_433_MHz);                                // 433 MHz base
-		SPI_RFT_Set_Load_Capacitance(SPI_RFT_Load_Cap_160);                                   // 16 pF Quarz
-		SPI_RFT_Reset_Flags(SPI_RFT_Register_AFCCREG,ARFO_1 | ARFO_0);                        // no restriction for FSK
-		SPI_RFT_Set_Modulation_Bandwidth(SPI_RFT_Modulation_Bandwidth_120kHz);                // ±120 kHz for FSK
-		SPI_RFT_Set_Center_Frequency(1200);                                                   // centered on 433 MHz
-		SPI_RFT_Set_Receiver_Baseband_Bandwidth(SPI_RFT_Receiver_Baseband_Bandwidth_270kHz);  // 270 kHz for FSK 120 kHz * 2
-		SPI_RFT_Set_Digital_RSSI_Threshold(SPI_RFT_Digital_RSSI_Threshold_85dB);              // -85 dB threshold for DRSSI
-		SPI_RFT_Set_Data_Quality_Threshold(5);
-		SPI_RFT_Set_Flags(SPI_RFT_Register_BBFCREG,FTYPE);                                    // RC-low pass filer
-		SPI_RFT_Set_Synch_Byte(0x6A);
-		SPI_RFT_Set_Data_Rate(0);                                                             // 256 kbps
-		SPI_RFT_Set_Flags(SPI_RFT_Register_PMCREG,CLKOEN);                                    // Disable clock output
+  if (full)
+  {
+    SPI_RFT_Set_FIFO_Fill_Count(8);
+    SPI_RFT_Set_Flags(SPI_RFT_Register_FIFORSTREG,DRSTM);
+    SPI_RFT_Restart_Synch_Pattern();
+    SPI_RFT_Set_Frequency_Band(SPI_RFT_Freq_Band_433_MHz);                                // 433 MHz base
+    SPI_RFT_Set_Load_Capacitance(SPI_RFT_Load_Cap_160);                                   // 16 pF Quarz
+    SPI_RFT_Reset_Flags(SPI_RFT_Register_AFCCREG,ARFO_1 | ARFO_0);                        // no restriction for FSK
+    SPI_RFT_Set_Modulation_Bandwidth(SPI_RFT_Modulation_Bandwidth_120kHz);                // ±120 kHz for FSK
+    SPI_RFT_Set_Center_Frequency(1200);                                                   // centered on 433 MHz
+    SPI_RFT_Set_Receiver_Baseband_Bandwidth(SPI_RFT_Receiver_Baseband_Bandwidth_270kHz);  // 270 kHz for FSK 120 kHz * 2
+    SPI_RFT_Set_Digital_RSSI_Threshold(SPI_RFT_Digital_RSSI_Threshold_85dB);              // -85 dB threshold for DRSSI
+    SPI_RFT_Set_Data_Quality_Threshold(5);
+    SPI_RFT_Set_Flags(SPI_RFT_Register_BBFCREG,FTYPE);                                    // RC-low pass filer
+    SPI_RFT_Set_Synch_Byte(0x6A);
+    SPI_RFT_Set_Data_Rate(0);                                                             // 256 kbps
+    SPI_RFT_Set_Flags(SPI_RFT_Register_PMCREG,CLKOEN);                                    // Disable clock output
 
-		SPI_RFT_Enable_Transmitter();                                                         // Tune in antenna
-		while (SPI_RFT_Get_Status() != SPI_RFT_TX_On) {};
-	}
-  SPI_RFT_Start_Polling();																															// Start polling
+    SPI_RFT_Enable_Transmitter();                                                         // Tune in antenna
+    while (SPI_RFT_Get_Status() != SPI_RFT_TX_On) {};
+  }
+  SPI_RFT_Start_Polling();                                                              // Start polling
 
   RFTPortsInit();
 }
 
 void Initialization(uint8_t is_config)
 {
-	EXTI_InitTypeDef InitStructure;
-	TIM_TimeBaseInitTypeDef Init;
+  EXTI_InitTypeDef InitStructure;
+  TIM_TimeBaseInitTypeDef Init;
 
   if (is_config)
   {
@@ -141,40 +141,40 @@ void Initialization(uint8_t is_config)
     if (PeripheralParams.b.output_enabled)
       ConfigureOutputInterface();
 
-		if (PeripheralParams.b.is_power_save && (PWR_GetFlagStatus(PWR_FLAG_SB) == SET))
-		{
-			// Successfully return from standby mode!
-			PWR_ClearFlag(PWR_FLAG_SB);
-			// No full initialization needed for RFT
-			RFTInit(0);
-			// Turn off WUT
-			RTC_WakeUpCmd(DISABLE);
-		}
-		else
-			// Initializing wireless module
-			RFTInit(1);
+    if (PeripheralParams.b.is_power_save && (PWR_GetFlagStatus(PWR_FLAG_SB) == SET))
+    {
+      // Successfully return from standby mode!
+      PWR_ClearFlag(PWR_FLAG_SB);
+      // No full initialization needed for RFT
+      RFTInit(0);
+      // Turn off WUT
+      RTC_WakeUpCmd(DISABLE);
+    }
+    else
+      // Initializing wireless module
+      RFTInit(1);
 
-		if (PeripheralParams.b.is_power_save)
-		{
-			/* Configure WUT interrupt */
-			EXTI_StructInit(&InitStructure);
-			InitStructure.EXTI_LineCmd = ENABLE;
-			InitStructure.EXTI_Mode = EXTI_Mode_Interrupt;
-			InitStructure.EXTI_Line = EXTI_Line20;
-			InitStructure.EXTI_Trigger = EXTI_Trigger_Rising;
-			EXTI_Init(&InitStructure);
+    if (PeripheralParams.b.is_power_save)
+    {
+      /* Configure WUT interrupt */
+      EXTI_StructInit(&InitStructure);
+      InitStructure.EXTI_LineCmd = ENABLE;
+      InitStructure.EXTI_Mode = EXTI_Mode_Interrupt;
+      InitStructure.EXTI_Line = EXTI_Line20;
+      InitStructure.EXTI_Trigger = EXTI_Trigger_Rising;
+      EXTI_Init(&InitStructure);
 
-			NVIC_EnableIRQ(RTC_WKUP_IRQn);
-			NVIC_SetPriority(RTC_WKUP_IRQn,0);
+      NVIC_EnableIRQ(RTC_WKUP_IRQn);
+      NVIC_SetPriority(RTC_WKUP_IRQn,0);
 
-			/* Configure Timer6 */
-			RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM6,ENABLE);
+      /* Configure Timer6 */
+      RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM6,ENABLE);
 
-			TIM_TimeBaseStructInit(&Init);
-			Init.TIM_Prescaler = 11719; // 24000000 / 2048
-			Init.TIM_Period = 0xFFFF;
-			TIM_TimeBaseInit(TIM6,&Init);
-		}
+      TIM_TimeBaseStructInit(&Init);
+      Init.TIM_Prescaler = 11719; // 24000000 / 2048
+      Init.TIM_Period = 0xFFFF;
+      TIM_TimeBaseInit(TIM6,&Init);
+    }
 
     // Initializing interrupts' priorities
     NVIC_SetPriority(SDADC1_IRQn,0);
@@ -182,10 +182,10 @@ void Initialization(uint8_t is_config)
     NVIC_SetPriority(EXTI15_10_IRQn,2);
     NVIC_SetPriority(TIM7_IRQn,3);
 
-		// Configuring wakeup pins
-		PWR_WakeUpPinCmd(PWR_WakeUpPin_1,DISABLE);
-		PWR_WakeUpPinCmd(PWR_WakeUpPin_2,DISABLE);
-		PWR_WakeUpPinCmd(PWR_WakeUpPin_3,DISABLE);
+    // Configuring wakeup pins
+    PWR_WakeUpPinCmd(PWR_WakeUpPin_1,DISABLE);
+    PWR_WakeUpPinCmd(PWR_WakeUpPin_2,DISABLE);
+    PWR_WakeUpPinCmd(PWR_WakeUpPin_3,DISABLE);
 
     // Configure transmission timeout timer
     RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM7,ENABLE);

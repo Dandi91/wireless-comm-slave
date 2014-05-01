@@ -20,24 +20,24 @@ void Write_DAC_Low(DAC_Frame* buffer)
 {
   uint8_t i, *temp;
 
-  GPIO_ResetBits(GPIOA,GPIO_Pin_4);	// LATCH
-	while (SPI_I2S_GetFlagStatus(SPI2,SPI_I2S_FLAG_TXE) != SET) {};
+  GPIO_ResetBits(GPIOA,GPIO_Pin_4);  // LATCH
+  while (SPI_I2S_GetFlagStatus(SPI2,SPI_I2S_FLAG_TXE) != SET) {};
 
   temp = (uint8_t*)buffer;
-	for (i = 0; i < 24; i++)
-	{
-		SPI_SendData8(SPI2,*temp++);
-		while (SPI_I2S_GetFlagStatus(SPI2,SPI_I2S_FLAG_RXNE) != SET);
-	}
+  for (i = 0; i < 24; i++)
+  {
+    SPI_SendData8(SPI2,*temp++);
+    while (SPI_I2S_GetFlagStatus(SPI2,SPI_I2S_FLAG_RXNE) != SET);
+  }
 
-	GPIO_SetBits(GPIOA,GPIO_Pin_4); // LATCH
+  GPIO_SetBits(GPIOA,GPIO_Pin_4); // LATCH
 }
 
 void WriteDACs(uint16_t* data)
 {
   // Data 16-byte length
   DAC_Frame buffer[8];
-	uint8_t i;
+  uint8_t i;
 
   for (i = 0; i < 8; i++)
   {
@@ -63,7 +63,7 @@ void InitializeDACs(void)
 void ConfigureDACInterface(void)
 {
   // APB1 Clock 16 MHz
-	// Clock < 12 MHz (24/2=12 MHz)
+  // Clock < 12 MHz (24/2=12 MHz)
   // MSB First
   // SPI(0,0), 8 bit
 
@@ -104,6 +104,6 @@ void ConfigureDACInterface(void)
   GPIO_Init(GPIOA,&PinInit);        // LATCH
 
   SPI_Cmd(SPI2,ENABLE);
-  
+
   InitializeDACs();
 }

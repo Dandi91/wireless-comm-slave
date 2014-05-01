@@ -2,19 +2,19 @@
 
 uint32_t GetLogicInputs(void)
 {
-	uint8_t buffer[4] = {0,0,0,0};
-	uint8_t input_index, i;
+  uint8_t buffer[4] = {0,0,0,0};
+  uint8_t input_index, i;
 
-	for (input_index = 0; input_index < 8; input_index++)
-	{
-		GPIO_Write(GPIOD,input_index << 4);	// set channel index (A-B-C)
-		for (i = 0; i < 4; i++)
-		{
-			if (GPIO_ReadInputDataBit(GPIOD,1 << i))
-				buffer[i] &= 1 << input_index; 
-		}
-	}
-	return *(uint32_t*)&buffer[0];
+  for (input_index = 0; input_index < 8; input_index++)
+  {
+    GPIO_Write(GPIOD,input_index << 4);  // set channel index (A-B-C)
+    for (i = 0; i < 4; i++)
+    {
+      if (GPIO_ReadInputDataBit(GPIOD,1 << i))
+        buffer[i] &= 1 << input_index;
+    }
+  }
+  return *(uint32_t*)&buffer[0];
 }
 
 void ConfigureInputInterface(void)
