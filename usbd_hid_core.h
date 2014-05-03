@@ -61,8 +61,8 @@
 #define HID_REQ_SET_REPORT            0x09
 #define HID_REQ_GET_REPORT            0x01
 
-#define REPORT_BASE                    0x01
-#define REPORT_MEMORY                  REPORT_BASE
+#define REPORT_BASE                   0x01
+#define REPORT_MEMORY                 REPORT_BASE
 
 #define BCKP_STRUCT_LENGTH            18
 /**
