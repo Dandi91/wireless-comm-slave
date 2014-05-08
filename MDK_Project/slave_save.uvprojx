@@ -361,7 +361,7 @@
               <MiscControls></MiscControls>
               <Define>HSE_VALUE=8000000, USE_STDPERIPH_DRIVER, STM32F37X</Define>
               <Undefine></Undefine>
-              <IncludePath>..\..\slave_save;..\SPI_Lib;..\STM32F37x_DSP_StdPeriph_Lib_V1.0.0\Libraries\CMSIS\Device\ST\STM32F37x\Include;..\STM32F37x_DSP_StdPeriph_Lib_V1.0.0\Libraries\STM32F37x_StdPeriph_Driver\inc;..\STM32_Cryptographic_library_package_V2.0.6\Libraries\STM32_Cryptographic_Library\inc;..\STM32_USB-Host-Device_Lib_V2.1.0\Libraries\STM32_USB_OTG_Driver\inc;..\STM32_USB-Host-Device_Lib_V2.1.0\Libraries\STM32_USB_Device_Library\Core\inc</IncludePath>
+              <IncludePath>..\..\slave_save;..\SPI_Lib;..\STM32F37x_DSP_StdPeriph_Lib_V1.0.0\Libraries\STM32F37x_StdPeriph_Driver\inc;..\STM32_Cryptographic_library_package_V2.0.6\Libraries\STM32_Cryptographic_Library\inc;..\STM32_USB-Host-Device_Lib_V2.1.0\Libraries\STM32_USB_OTG_Driver\inc;..\STM32_USB-Host-Device_Lib_V2.1.0\Libraries\STM32_USB_Device_Library\Core\inc</IncludePath>
             </VariousControls>
           </Cads>
           <Aads>
