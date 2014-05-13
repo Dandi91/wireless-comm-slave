@@ -9,7 +9,7 @@
 #define WARM_UP_TIME 10
 
 #define DEFAULT_MASTER_ADDRESS  0x01
-#define BROADCAST_ADDRESS        0xFF
+#define BROADCAST_ADDRESS       0xFF
 
 #define PACKET_TYPE_INIT      0x00
 #define PACKET_TYPE_ANS       0x01
@@ -154,6 +154,11 @@ void HandlePacket(uint8_t *h_packet)
         StartTimer6();
         MakeTransPacket(0,address,PACKET_TYPE_OK);
       }
+      break;
+    }
+    case PACKET_TYPE_ECHO:
+    {
+      MakeTransPacket(0,address,PACKET_TYPE_ECHO);
       break;
     }
     case PACKET_TYPE_REQ:
@@ -305,6 +310,12 @@ void RX_Complete(void)
           MakePacket(sender,address,PACKET_TYPE_OK);
           SPI_RFT_Write_Packet(packet,PROTO_BYTES_CNT);
         }
+        break;
+      }
+      case PACKET_TYPE_ECHO:  // Echo packet - send another as answer
+      {
+        MakePacket(sender,address,PACKET_TYPE_ECHO);
+        SPI_RFT_Write_Packet(packet,PROTO_BYTES_CNT);
         break;
       }
       case PACKET_TYPE_REQ:  // output data
