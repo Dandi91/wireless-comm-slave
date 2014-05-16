@@ -24,11 +24,11 @@
 // Fields
 #define PCKT_TO_OFST    0x00
 #define PCKT_FROM_OFST  0x01
-#define PCKT_CMD_OFST    0x02
+#define PCKT_CMD_OFST   0x02
 #define PCKT_DATA_OFST  0x03
 
 #define TRMS_TO_OFST    0x00
-#define TRMS_CMD_OFST    0x01
+#define TRMS_CMD_OFST   0x01
 #define TRMS_DATA_OFST  0x02
 
 // Work packet
@@ -184,7 +184,7 @@ void TransmitNextFromBuffer(void)
   // Check with ourselves
   if (*(curr_transmt_pos + DATA_LENGTH + TRMS_TO_OFST) == address)
   {
-    // Recipient is we!
+    // Recipient is us!
     curr_transmt_pos += DATA_LENGTH;
     HandlePacket(curr_transmt_pos);
     return;
@@ -352,6 +352,7 @@ void RX_Complete(void)
 
 uint8_t* RX_Begin(data_len_t length)
 {
+  TIM_Cmd(TIM7,DISABLE);
   packet_length = length;
   if ((length < PROTO_BYTES_CNT) || (length > sizeof(packet)))
     return NULL;

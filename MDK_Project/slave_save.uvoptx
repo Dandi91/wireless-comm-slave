@@ -616,10 +616,10 @@
       <FileType>1</FileType>
       <tvExp>0</tvExp>
       <Focus>0</Focus>
-      <ColumnNumber>9</ColumnNumber>
+      <ColumnNumber>25</ColumnNumber>
       <tvExpOptDlg>0</tvExpOptDlg>
-      <TopLine>305</TopLine>
-      <CurrentLine>312</CurrentLine>
+      <TopLine>318</TopLine>
+      <CurrentLine>356</CurrentLine>
       <bDave2>0</bDave2>
       <PathWithFileName>..\rft_handlers.c</PathWithFileName>
       <FilenameWithoutPath>rft_handlers.c</FilenameWithoutPath>
